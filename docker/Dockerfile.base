@@ -1,0 +1,39 @@
+FROM k2data/sandbox-base:latest
+
+# # Set environment variables
+# ENV PYTHONDONTWRITEBYTECODE=1 \
+#     PYTHONUNBUFFERED=1 \
+#     PYTHONPATH=/home/user/workspace \
+#     NODE_ENV=development
+
+# # Create a user with a known UID/GID (if not already present)
+# RUN groupadd -g 1000 user || true && \
+#     useradd -m -u 1000 -g user user || true && \
+#     mkdir -p /home/user/workspace && \
+#     chown -R user:user /home/user/workspace
+
+# WORKDIR /home/user/workspace
+
+# # Install additional Python packages
+# RUN pip install --no-cache-dir \
+#     scikit-learn \
+#     tensorflow \
+#     pytorch-lightning \
+#     transformers
+
+# # Install additional NPM packages
+# RUN npm install -g \
+#     typescript \
+#     ts-node
+
+# # Install additional R packages
+# RUN R -e "install.packages(c('ggplot2', 'dplyr', 'tidyr'), repos='https://cloud.r-project.org')"
+
+# # Switch to the non-root user for running applications
+# USER user
+
+# # Expose common ports
+# EXPOSE 3000 8888 49999
+
+# # Use the start-up script from the base image
+# CMD ["/root/.jupyter/start-up.sh"] 

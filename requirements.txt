@@ -1,0 +1,4 @@
+docker>=5.0.0
+pytest>=6.0.0
+pytest-asyncio>=0.14.0
+jupyter>=1.0.0 
