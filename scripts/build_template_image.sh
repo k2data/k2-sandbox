@@ -3,7 +3,7 @@
 # Script to build Docker image from templates/Dockerfile
 
 # Default values
-IMAGE_NAME="k2data/sandbox-code-interpreter"
+IMAGE_NAME="k2-sandbox/code-interpreter"
 TAG="latest"
 BUILD_ARGS=""
 NO_CACHE=false
@@ -11,39 +11,39 @@ NO_CACHE=false
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --name)
-      IMAGE_NAME="$2"
-      shift 2
-      ;;
-    --tag)
-      TAG="$2"
-      shift 2
-      ;;
-    --build-arg)
-      BUILD_ARGS="$BUILD_ARGS --build-arg $2"
-      shift 2
-      ;;
-    --no-cache)
-      NO_CACHE=true
-      shift
-      ;;
-    --help)
-      echo "Usage: $0 [OPTIONS]"
-      echo "Build Docker image from templates/Dockerfile"
-      echo ""
-      echo "Options:"
-      echo "  --name NAME       Set the image name (default: k2data/sandbox-code-interpreter)"
-      echo "  --tag TAG         Set the image tag (default: latest)"
-      echo "  --build-arg ARG   Add a build argument (can be used multiple times)"
-      echo "  --no-cache        Build without using Docker cache"
-      echo "  --help            Display this help message"
-      exit 0
-      ;;
-    *)
-      echo "Unknown option: $1"
-      echo "Use --help for usage information"
-      exit 1
-      ;;
+  --name)
+    IMAGE_NAME="$2"
+    shift 2
+    ;;
+  --tag)
+    TAG="$2"
+    shift 2
+    ;;
+  --build-arg)
+    BUILD_ARGS="$BUILD_ARGS --build-arg $2"
+    shift 2
+    ;;
+  --no-cache)
+    NO_CACHE=true
+    shift
+    ;;
+  --help)
+    echo "Usage: $0 [OPTIONS]"
+    echo "Build Docker image from templates/Dockerfile"
+    echo ""
+    echo "Options:"
+    echo "  --name NAME       Set the image name (default: k2-sandbox/code-interpreter)"
+    echo "  --tag TAG         Set the image tag (default: latest)"
+    echo "  --build-arg ARG   Add a build argument (can be used multiple times)"
+    echo "  --no-cache        Build without using Docker cache"
+    echo "  --help            Display this help message"
+    exit 0
+    ;;
+  *)
+    echo "Unknown option: $1"
+    echo "Use --help for usage information"
+    exit 1
+    ;;
   esac
 done
 
@@ -85,4 +85,4 @@ else
   echo ""
   echo "Failed to build image: $FULL_IMAGE_NAME"
   exit 1
-fi 
+fi

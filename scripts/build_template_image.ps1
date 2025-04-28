@@ -1,7 +1,7 @@
 # PowerShell script to build Docker image from templates/Dockerfile
 
 # Default values
-$ImageName = "k2data/sandbox-code-interpreter"
+$ImageName = "k2-sandbox/code-interpreter"
 $Tag = "latest"
 $BuildArgs = @()
 $NoCache = $false
@@ -27,7 +27,7 @@ for ($i = 0; $i -lt $args.Count; $i++) {
             Write-Host "Build Docker image from templates/Dockerfile"
             Write-Host ""
             Write-Host "Options:"
-            Write-Host "  --name NAME       Set the image name (default: k2data/sandbox-code-interpreter)"
+            Write-Host "  --name NAME       Set the image name (default: k2-sandbox/code-interpreter)"
             Write-Host "  --tag TAG         Set the image tag (default: latest)"
             Write-Host "  --build-arg ARG   Add a build argument (can be used multiple times)"
             Write-Host "  --no-cache        Build without using Docker cache"

@@ -1,4 +1,4 @@
-FROM k2data/sandbox-base:latest
+FROM k2-sandbox/base:latest
 
 # # Set environment variables
 # ENV PYTHONDONTWRITEBYTECODE=1 \

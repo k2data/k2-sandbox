@@ -50,8 +50,8 @@ def main():
     )
     parser.add_argument(
         "--name",
-        default="k2data/sandbox-code-interpreter",
-        help="Name for the image (default: k2data/sandbox-code-interpreter)",
+        default="k2-sandbox/code-interpreter",
+        help="Name for the image (default: k2-sandbox/code-interpreter)",
     )
     parser.add_argument(
         "--tag", default="latest", help="Tag for the image (default: latest)"

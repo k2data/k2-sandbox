@@ -68,7 +68,7 @@ class Sandbox:
         """
         self.client = docker.from_env()
         self.api_key = api_key or os.environ.get("K2_API_KEY")
-        self.template = template or "k2data/sandbox-base:latest"
+        self.template = template or "k2-sandbox/base:latest"
         self.cwd = cwd or "/home/user"
         self.envs = envs or {}
         self.timeout = timeout

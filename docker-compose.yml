@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   k2sandbox:
@@ -7,11 +7,11 @@ services:
       dockerfile: docker/Dockerfile.base
       args:
         - TEMPLATE_DIR=templates
-    image: k2data/sandbox-base:latest
+    image: k2-sandbox/base:latest
     ports:
       - "8888:8888"
       - "3000:3000"
       - "49999:49999"
     volumes:
       - ./templates:/templates
-      - ./workspace:/home/user/workspace 
+      - ./workspace:/home/user/workspace
