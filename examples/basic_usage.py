@@ -21,13 +21,13 @@ from k2_sandbox import Sandbox
 
 def main():
     print("Creating a new sandbox...")
-    with Sandbox() as sandbox:
+    with Sandbox(template="k2-sandbox/code-interpreter:latest") as sandbox:
         # 1. Execute simple Python code
         print("\n=== Running Python code ===")
-        print(sandbox)
-        print(sandbox.client)
-        execution = sandbox.run_code("x = 41; x + 1; x")
+        print(f"Sandbox ID: {sandbox.sandbox_id}")
+        execution = sandbox.run_code("x = 41; x + 1; x", language="python")
         print(f"Result: {execution.text}")  # Output: 42
+        print(f"Execution: {execution}")
 
         # # 2. File operations
         # print("\n=== File operations ===")
