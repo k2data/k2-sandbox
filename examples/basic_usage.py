@@ -16,10 +16,12 @@ import os
 # Add the project root directory to the Python path so we can import the k2_sandbox module
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from dotenv import load_dotenv
 from k2_sandbox import Sandbox
 
 
 def main():
+    load_dotenv()  # Load environment variables from .env file
     start_time = time.time()
     print("Creating a new sandbox...")
     with Sandbox(template="k2-sandbox/code-interpreter:latest") as sandbox:

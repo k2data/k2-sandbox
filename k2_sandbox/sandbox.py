@@ -29,8 +29,6 @@ from k2_sandbox.exceptions import (
 # from k2_sandbox.terminal import Terminal
 # from k2_sandbox.notebook import Notebook
 
-DEFAULT_API_BASE_URL = "http://localhost:3000"
-
 
 class Sandbox:
     """
@@ -39,6 +37,8 @@ class Sandbox:
     Provides methods for executing code, managing files, and running processes
     within an isolated environment managed by the k2-sandbox-server.
     """
+
+    DEFAULT_API_BASE_URL = "http://localhost:3000"  # Add class attribute here
 
     def __init__(
         self,
@@ -76,7 +76,7 @@ class Sandbox:
             "K2_API_KEY"
         )  # Store API key, though usage depends on server auth
         self.api_base_url = api_base_url or os.environ.get(
-            "K2_API_BASE_URL", DEFAULT_API_BASE_URL
+            "K2_API_BASE_URL", Sandbox.DEFAULT_API_BASE_URL
         )
         self.template = template or "k2-sandbox/base:latest"
         self.cwd = cwd  # Keep track of cwd for potential use in run_code, though API doesn't manage it directly
@@ -429,7 +429,7 @@ class Sandbox:
             True if the sandbox was deleted successfully via API, False otherwise.
             Note: Returns False immediately if the sandbox is not found (404).
         """
-        url = f"{api_base_url or os.environ.get('K2_API_BASE_URL', DEFAULT_API_BASE_URL)}/sandboxes/{sandbox_id}"
+        url = f"{api_base_url or os.environ.get('K2_API_BASE_URL', cls.DEFAULT_API_BASE_URL)}/sandboxes/{sandbox_id}"
         headers = {"Content-Type": "application/json"}
         # Add auth header if needed:
         # if api_key: headers["Authorization"] = f"Bearer {api_key}"
@@ -537,7 +537,7 @@ class Sandbox:
         Returns:
             List of sandbox information dictionaries, conforming to the previous structure.
         """
-        url = f"{api_base_url or os.environ.get('K2_API_BASE_URL', DEFAULT_API_BASE_URL)}/sandboxes"
+        url = f"{api_base_url or os.environ.get('K2_API_BASE_URL', cls.DEFAULT_API_BASE_URL)}/sandboxes"
         headers = {"Content-Type": "application/json"}
         # Add auth header if needed:
         # if api_key: headers["Authorization"] = f"Bearer {api_key}"
