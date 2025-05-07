@@ -26,7 +26,7 @@ def main():
         print(f"Sandbox ID: {sandbox.sandbox_id}")
 
         code_start_time = time.time()
-        execution = sandbox.run_code("x = 41; x + 1; x", language="python")
+        execution = sandbox.run_code("x = 41; x = x + 1; x", language="python")
         code_duration = time.time() - code_start_time
 
         print(f"Result: {execution.text}")  # Output: 42

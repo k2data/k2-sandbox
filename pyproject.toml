@@ -1,11 +1,37 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "k2-sandbox"
 version = "0.1.0"
-description = "Add your description here"
+description = "Python SDK for running LLM-generated code in isolated Docker container environments"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "K2 Team", email = "info@k2sandbox.com"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 dependencies = [
+    "build>=1.2.2.post1",
     "docker>=7.1.0",
     "httpx>=0.28.1",
     "python-dotenv>=1.1.0",
+    "twine>=6.1.0",
 ]
+
+[project.urls]
+"Homepage" = "https://github.com/k2data/k2-sandbox"
+"Bug Tracker" = "https://github.com/k2data/k2-sandbox/issues"
+"Documentation" = "https://github.com/k2data/k2-sandbox#documentation"
+
+[tool.setuptools]
+packages = ["k2_sandbox"]

@@ -605,8 +605,6 @@ class CodeInterpreterSandbox(BaseSandbox):
             f"{self.api_base_url}/sandboxes/{self._sandbox_id}/services/49999/execute"
         )
 
-        print(f"Attempting to run code via streaming: {service_url}")
-
         payload = {
             "code": code,
             "env_vars": envs or {},
@@ -618,8 +616,6 @@ class CodeInterpreterSandbox(BaseSandbox):
         if effective_cwd:
             code_prefix = f"import os\\ntry:\\n os.chdir(r'{effective_cwd}')\\nexcept FileNotFoundError:\\n print(f'Error: Directory not found: {effective_cwd}')\\n"
             payload["code"] = code_prefix + payload["code"]
-
-        print(f"Payload: {payload}")
 
         exec_timeout = timeout
         req_timeout = request_timeout or self.request_timeout
