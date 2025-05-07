@@ -30,15 +30,15 @@ from k2_sandbox.exceptions import (
 # from k2_sandbox.notebook import Notebook
 
 
-class Sandbox:
+class BaseSandbox:
     """
-    The main class for creating and interacting with a K2 Sandbox via a REST API.
+    The base class for creating and interacting with a K2 Sandbox via a REST API.
 
-    Provides methods for executing code, managing files, and running processes
-    within an isolated environment managed by the k2-sandbox-server.
+    Provides common methods for managing sandboxes. Specialized sandboxes
+    should inherit from this class.
     """
 
-    DEFAULT_API_BASE_URL = "http://localhost:3000"  # Add class attribute here
+    DEFAULT_API_BASE_URL = "http://localhost:3000"
 
     def __init__(
         self,
@@ -46,43 +46,39 @@ class Sandbox:
         api_key: Optional[str] = None,
         cwd: Optional[str] = None,
         envs: Optional[Dict[str, str]] = None,
-        timeout: Optional[
-            int
-        ] = 300,  # Timeout for sandbox inactivity (used in creation)
-        metadata: Optional[
-            Dict[str, str]
-        ] = None,  # Note: Metadata might not be supported by the API
+        timeout: Optional[int] = 300,
+        metadata: Optional[Dict[str, str]] = None,
         sandbox_id: Optional[str] = None,
-        request_timeout: Optional[float] = 60.0,  # Timeout for individual API requests
+        request_timeout: Optional[float] = 60.0,
         api_base_url: Optional[str] = None,
     ):
         """
-        Initialize a Sandbox instance, either creating a new one or connecting to an existing one.
+        Initialize a BaseSandbox instance.
 
         Args:
-            template: Docker image template to use (e.g., 'k2-sandbox/base:latest')
-            api_key: K2 Sandbox API key (defaults to K2_API_KEY env var, currently unused in API calls)
-            cwd: Initial working directory (Note: Handled by the execution environment, not directly by API)
+            template: Docker image template to use (e.g., 'k2-sandbox/base:latest').
+                      Specialized subclasses may provide their own defaults.
+            api_key: K2 Sandbox API key
+            cwd: Initial working directory
             envs: Environment variables to set in the container
             timeout: Sandbox inactivity timeout in seconds (passed during creation)
-            metadata: Custom metadata for the sandbox (Note: Not directly supported by the documented API)
+            metadata: Custom metadata for the sandbox
             sandbox_id: ID of an existing sandbox to connect to
             request_timeout: Timeout for API requests in seconds
             api_base_url: Base URL of the K2 Sandbox Server API
         """
-        # Remove docker client initialization
-        # self.client = docker.from_env()
-        self.api_key = api_key or os.environ.get(
-            "K2_API_KEY"
-        )  # Store API key, though usage depends on server auth
+        self.api_key = api_key or os.environ.get("K2_API_KEY")
         self.api_base_url = api_base_url or os.environ.get(
-            "K2_API_BASE_URL", Sandbox.DEFAULT_API_BASE_URL
+            "K2_API_BASE_URL", BaseSandbox.DEFAULT_API_BASE_URL  # Updated reference
         )
-        self.template = template or "k2-sandbox/base:latest"
-        self.cwd = cwd  # Keep track of cwd for potential use in run_code, though API doesn't manage it directly
+        # If template is None here, it means either it's a connection (sandbox_id given)
+        # or a direct BaseSandbox instantiation without a template.
+        # Specialized classes' __init__ should provide a default template if needed.
+        self.template = template or "k2-sandbox/base:latest"  # Default for generic base
+        self.cwd = cwd
         self.envs = envs or {"E2B_LOCAL": "True"}
-        self._initial_timeout = timeout  # Store the timeout used for creation
-        self.metadata = metadata or {}  # Store metadata, though API doesn't use it
+        self._initial_timeout = timeout
+        self.metadata = metadata or {}
         self.request_timeout = request_timeout
 
         self._sandbox_id = sandbox_id
@@ -160,201 +156,14 @@ class Sandbox:
         """Connect to an existing sandbox by verifying its existence via the API."""
         try:
             response = self._make_request("get", f"/sandboxes/{sandbox_id}")
-            self._sandbox_id = sandbox_id  # Confirmed existence
-            self._container_info = response.json()  # Store info
+            self._sandbox_id = sandbox_id
+            self._container_info = response.json()
         except NotFoundError:
             raise NotFoundError(f"Sandbox with ID {sandbox_id} not found via API.")
         except K2Exception as e:
             raise SandboxException(
                 f"Failed to connect to sandbox {sandbox_id} via API: {str(e)}"
             )
-
-    @classmethod
-    def create(cls, template: Optional[str] = None, **kwargs):
-        """
-        Create a new Sandbox asynchronously (remains synchronous in this implementation).
-
-        Args:
-            template: Docker image template to use
-            **kwargs: Additional arguments to pass to Sandbox constructor
-
-        Returns:
-            A new Sandbox instance
-        """
-        # Note: True async creation would require an async HTTP client (e.g., httpx)
-        # and changes throughout the class. Keeping sync for now.
-        return cls(template=template, **kwargs)
-
-    @classmethod
-    def connect(cls, sandbox_id: str, api_key: Optional[str] = None, **kwargs):
-        """
-        Connect to an existing Sandbox.
-
-        Args:
-            sandbox_id: ID of the sandbox to connect to
-            api_key: K2 Sandbox API key
-            **kwargs: Additional arguments to pass to Sandbox constructor
-
-        Returns:
-            A Sandbox instance connected to the existing sandbox
-        """
-        # We pass sandbox_id to constructor, which calls _connect_sandbox
-        return cls(sandbox_id=sandbox_id, api_key=api_key, **kwargs)
-
-    def run_code(
-        self,
-        code: str,
-        language: Optional[str] = None,
-        on_stdout: Optional[OutputHandler[OutputMessage]] = None,
-        on_stderr: Optional[OutputHandler[OutputMessage]] = None,
-        on_result: Optional[OutputHandler[Result]] = None,
-        on_error: Optional[OutputHandler[ExecutionError]] = None,
-        timeout: Optional[float] = None,
-        cwd: Optional[str] = None,
-        envs: Optional[Dict[str, str]] = None,
-        request_timeout: Optional[float] = None,
-    ) -> Execution:
-        """
-        Execute code in the sandbox using a streaming connection.
-
-        Args:
-            code: Code to execute
-            language: Language to use (e.g., "python", "javascript", "r")
-            on_stdout: Callback for stdout messages
-            on_stderr: Callback for stderr messages
-            on_result: Callback for rich results (plots, etc.)
-            on_error: Callback for execution errors.
-            timeout: Execution timeout in seconds (for the entire execution stream).
-            cwd: Working directory for execution (prepended to code).
-            envs: Environment variables for execution (passed in payload).
-            request_timeout: Timeout for individual network requests (connect, write, pool) in seconds.
-
-        Returns:
-            An Execution object populated with results from the stream.
-        """
-        from k2_sandbox.models import Execution, Logs, Result
-
-        # Determine service URL (remains the same)
-        service_url = (
-            f"{self.api_base_url}/sandboxes/{self._sandbox_id}/services/49999/execute"
-        )
-
-        print(f"Attempting to run code via streaming: {service_url}")
-
-        # Prepare request payload (remains similar)
-        payload = {
-            "code": code,
-            "env_vars": envs or {},
-        }
-        if language:
-            payload["language"] = language.lower()
-
-        effective_cwd = cwd or self.cwd
-        if effective_cwd:
-            code_prefix = f"import os\ntry:\n os.chdir(r'{effective_cwd}')\nexcept FileNotFoundError:\n print(f'Error: Directory not found: {effective_cwd}')\n"
-            # Use simple concatenation to avoid f-string quote nesting issues
-            payload["code"] = code_prefix + payload["code"]
-
-        print(f"Payload: {payload}")
-
-        # Determine timeouts
-        exec_timeout = timeout  # Timeout for the entire operation (read timeout)
-        req_timeout = (
-            request_timeout or self.request_timeout
-        )  # Timeout for connect/write/pool
-
-        # Initialize Execution object to store results
-        execution = Execution(logs=Logs(stdout=[], stderr=[]), results=[])
-
-        try:
-            # Use httpx.stream for handling the response line by line
-            with httpx.stream(
-                "POST",
-                service_url,
-                json=payload,
-                # Timeout tuple: (connect, read, write, pool)
-                # Use exec_timeout for the read timeout, req_timeout for others
-                timeout=(req_timeout, exec_timeout, req_timeout, req_timeout),
-                # Add headers if needed (e.g., for auth in the future)
-                # headers={"Authorization": f"Bearer {self.api_key}"}
-            ) as response:
-
-                # Check for initial HTTP errors before streaming
-                # Note: httpx.stream doesn't raise for status immediately like requests.post
-                # We need to check the status code manually if we want to fail early.
-                if response.status_code >= 400:
-                    # Consume the response body to get the error message
-                    error_body = response.read().decode()
-                    # Raise an appropriate exception based on status code
-                    if response.status_code == 404:
-                        raise NotFoundError(
-                            f"Execution service not found at {service_url}: {error_body}"
-                        )
-                    else:
-                        raise SandboxException(
-                            f"Execution request failed: {response.status_code} {error_body}"
-                        )
-
-                # Process the stream line by line
-                for line in response.iter_lines():
-                    if line:
-                        # Call the provided parse_output function
-                        parse_output(
-                            execution,
-                            line,
-                            on_stdout=on_stdout,
-                            on_stderr=on_stderr,
-                            on_result=on_result,
-                            on_error=on_error,
-                        )
-
-            # After stream finishes, return the populated execution object
-            # Combine stdout/stderr lists into the text field if needed (or adjust Execution model)
-            # execution.text = "\n".join(execution.logs.stdout) # Example if needed
-            return execution
-
-        # Specific httpx timeout errors
-        except httpx.ReadTimeout:
-            # This likely means the code execution itself took too long (exec_timeout)
-            error_msg = f"Code execution timed out after {exec_timeout} seconds."
-            execution.error = ExecutionError(
-                name="TimeoutError", value=error_msg, traceback=[]
-            )
-            if on_error:
-                on_error(execution.error)
-            return execution  # Return partial execution with error set
-        except httpx.TimeoutException as e:
-            # Other timeouts (connect, write, pool) related to req_timeout
-            error_msg = f"Network request timed out ({type(e).__name__}): {str(e)}"
-            execution.error = ExecutionError(
-                name="NetworkTimeoutError", value=error_msg, traceback=[]
-            )
-            if on_error:
-                on_error(execution.error)
-            return execution  # Return partial execution with error set
-
-        # General HTTP/Network errors
-        except httpx.RequestError as e:
-            error_msg = f"Network error connecting to code execution service at {service_url}: {str(e)}"
-            execution.error = ExecutionError(
-                name="CodeExecutionConnectionError", value=error_msg, traceback=[]
-            )
-            if on_error:
-                on_error(execution.error)
-            return execution
-
-        # Catch potential errors during stream processing or parsing (though parse_output might handle some)
-        except Exception as e:
-            # Catch unexpected errors during streaming/parsing
-            error_msg = f"An unexpected error occurred during code execution stream processing: {str(e)}"
-            print(f"Error: {error_msg}")  # Log it
-            if not execution.error:  # Don't overwrite specific execution errors
-                execution.error = ExecutionError(
-                    name="StreamProcessingError", value=error_msg, traceback=[]
-                )
-                if on_error:
-                    on_error(execution.error)
-            return execution
 
     def close(self) -> None:
         """Close the sandbox by deleting it via the API."""
@@ -632,3 +441,310 @@ class Sandbox:
             # Notebook might need similar refactoring.
             self._notebook = Notebook(self)
         return self._notebook
+
+    @classmethod
+    def create_code_interpreter(
+        cls,
+        api_key: Optional[str] = None,
+        cwd: Optional[str] = None,
+        envs: Optional[Dict[str, str]] = None,
+        timeout: Optional[int] = 300,
+        metadata: Optional[Dict[str, str]] = None,
+        request_timeout: Optional[float] = 60.0,
+        api_base_url: Optional[str] = None,
+    ) -> "CodeInterpreterSandbox":
+        """Creates a new CodeInterpreterSandbox instance."""
+        return CodeInterpreterSandbox(
+            api_key=api_key,
+            cwd=cwd,
+            envs=envs,
+            timeout=timeout,
+            metadata=metadata,
+            request_timeout=request_timeout,
+            api_base_url=api_base_url,
+        )
+
+    @classmethod
+    def create(
+        cls,
+        template: Optional[str] = None,
+        api_key: Optional[str] = None,
+        cwd: Optional[str] = None,
+        envs: Optional[Dict[str, str]] = None,
+        timeout: Optional[int] = 300,
+        metadata: Optional[Dict[str, str]] = None,
+        request_timeout: Optional[float] = 60.0,
+        api_base_url: Optional[str] = None,
+    ) -> "BaseSandbox":
+        """
+        Create a new generic BaseSandbox instance.
+
+        Args:
+            template: Docker image template to use. If None, BaseSandbox's
+                      default template ('k2-sandbox/base:latest') will be used.
+            api_key: K2 Sandbox API key.
+            cwd: Initial working directory.
+            envs: Environment variables to set in the container.
+            timeout: Sandbox inactivity timeout in seconds (passed during creation).
+            metadata: Custom metadata for the sandbox.
+            request_timeout: Timeout for API requests in seconds.
+            api_base_url: Base URL of the K2 Sandbox Server API.
+
+        Returns:
+            A new BaseSandbox instance.
+        """
+        return cls(
+            template=template,
+            api_key=api_key,
+            cwd=cwd,
+            envs=envs,
+            timeout=timeout,
+            metadata=metadata,
+            sandbox_id=None,  # Important: sandbox_id is None for creation
+            request_timeout=request_timeout,
+            api_base_url=api_base_url,
+        )
+
+    @classmethod
+    def connect(
+        cls,
+        sandbox_id: str,
+        api_key: Optional[str] = None,
+        cwd: Optional[str] = None,
+        envs: Optional[Dict[str, str]] = None,
+        metadata: Optional[Dict[str, str]] = None,
+        request_timeout: Optional[float] = 60.0,
+        api_base_url: Optional[str] = None,
+    ) -> "BaseSandbox":
+        """
+        Connect to an existing generic Sandbox.
+
+        Args:
+            sandbox_id: ID of the sandbox to connect to.
+            api_key: K2 Sandbox API key.
+            cwd: Optional current working directory (for local state consistency).
+            envs: Optional environment variables (for local state consistency).
+            metadata: Optional metadata (for local state consistency).
+            request_timeout: Timeout for API requests in seconds.
+            api_base_url: Base URL of the K2 Sandbox Server API.
+
+        Returns:
+            A BaseSandbox instance connected to the existing sandbox.
+        """
+        return cls(
+            sandbox_id=sandbox_id,
+            api_key=api_key,
+            cwd=cwd,
+            envs=envs,
+            metadata=metadata,
+            request_timeout=request_timeout,
+            api_base_url=api_base_url,
+            template=None,  # Template is not used for connection logic by __init__
+        )
+
+
+class CodeInterpreterSandbox(BaseSandbox):
+    """A sandbox specialized for code interpretation."""
+
+    DEFAULT_TEMPLATE = "k2-sandbox/code-interpreter:latest"
+
+    def __init__(
+        self,
+        template: Optional[str] = None,
+        sandbox_id: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        Initialize a CodeInterpreterSandbox instance.
+
+        Args:
+            template: Docker image template. Defaults to CodeInterpreterSandbox.DEFAULT_TEMPLATE if creating.
+            sandbox_id: ID of an existing sandbox to connect to.
+            **kwargs: Additional arguments for BaseSandbox.
+        """
+        if sandbox_id is None and template is None:
+            final_template = self.DEFAULT_TEMPLATE
+        else:
+            final_template = template
+        super().__init__(template=final_template, sandbox_id=sandbox_id, **kwargs)
+
+    def run_code(
+        self,
+        code: str,
+        language: Optional[str] = None,
+        on_stdout: Optional[OutputHandler[OutputMessage]] = None,
+        on_stderr: Optional[OutputHandler[OutputMessage]] = None,
+        on_result: Optional[OutputHandler[Result]] = None,
+        on_error: Optional[OutputHandler[ExecutionError]] = None,
+        timeout: Optional[float] = None,
+        cwd: Optional[str] = None,
+        envs: Optional[Dict[str, str]] = None,
+        request_timeout: Optional[float] = None,
+    ) -> Execution:
+        """
+        Execute code in the sandbox using a streaming connection.
+
+        Args:
+            code: Code to execute
+            language: Language to use (e.g., "python", "javascript", "r")
+            on_stdout: Callback for stdout messages
+            on_stderr: Callback for stderr messages
+            on_result: Callback for rich results (plots, etc.)
+            on_error: Callback for execution errors.
+            timeout: Execution timeout in seconds (for the entire execution stream).
+            cwd: Working directory for execution (prepended to code).
+            envs: Environment variables for execution (passed in payload).
+            request_timeout: Timeout for individual network requests (connect, write, pool) in seconds.
+
+        Returns:
+            An Execution object populated with results from the stream.
+        """
+        # from k2_sandbox.models import Execution, Logs, Result # Already imported at top-level
+
+        service_url = (
+            f"{self.api_base_url}/sandboxes/{self._sandbox_id}/services/49999/execute"
+        )
+
+        print(f"Attempting to run code via streaming: {service_url}")
+
+        payload = {
+            "code": code,
+            "env_vars": envs or {},
+        }
+        if language:
+            payload["language"] = language.lower()
+
+        effective_cwd = cwd or self.cwd
+        if effective_cwd:
+            code_prefix = f"import os\\ntry:\\n os.chdir(r'{effective_cwd}')\\nexcept FileNotFoundError:\\n print(f'Error: Directory not found: {effective_cwd}')\\n"
+            payload["code"] = code_prefix + payload["code"]
+
+        print(f"Payload: {payload}")
+
+        exec_timeout = timeout
+        req_timeout = request_timeout or self.request_timeout
+
+        execution = Execution(logs=Logs(stdout=[], stderr=[]), results=[])
+
+        try:
+            with httpx.stream(
+                "POST",
+                service_url,
+                json=payload,
+                timeout=(req_timeout, exec_timeout, req_timeout, req_timeout),
+            ) as response:
+                if response.status_code >= 400:
+                    error_body = response.read().decode()
+                    if response.status_code == 404:
+                        raise NotFoundError(
+                            f"Execution service not found at {service_url}: {error_body}"
+                        )
+                    else:
+                        raise SandboxException(
+                            f"Execution request failed: {response.status_code} {error_body}"
+                        )
+
+                for line in response.iter_lines():
+                    if line:
+                        parse_output(
+                            execution,
+                            line,
+                            on_stdout=on_stdout,
+                            on_stderr=on_stderr,
+                            on_result=on_result,
+                            on_error=on_error,
+                        )
+            return execution
+        except httpx.ReadTimeout:
+            error_msg = f"Code execution timed out after {exec_timeout} seconds."
+            execution.error = ExecutionError(
+                name="TimeoutError", value=error_msg, traceback=[]
+            )
+            if on_error:
+                on_error(execution.error)
+            return execution
+        except httpx.TimeoutException as e:
+            error_msg = f"Network request timed out ({type(e).__name__}): {str(e)}"
+            execution.error = ExecutionError(
+                name="NetworkTimeoutError", value=error_msg, traceback=[]
+            )
+            if on_error:
+                on_error(execution.error)
+            return execution
+        except httpx.RequestError as e:
+            error_msg = f"Network error connecting to code execution service at {service_url}: {str(e)}"
+            execution.error = ExecutionError(
+                name="CodeExecutionConnectionError", value=error_msg, traceback=[]
+            )
+            if on_error:
+                on_error(execution.error)
+            return execution
+        except Exception as e:
+            error_msg = f"An unexpected error occurred during code execution stream processing: {str(e)}"
+            print(f"Error: {error_msg}")
+            if not execution.error:
+                execution.error = ExecutionError(
+                    name="StreamProcessingError", value=error_msg, traceback=[]
+                )
+                if on_error:
+                    on_error(execution.error)
+            return execution
+
+
+class PythonAppSandbox(BaseSandbox):
+    """A sandbox specialized for running Python applications."""
+
+    DEFAULT_TEMPLATE = "k2-sandbox/python-app:latest"
+
+    def __init__(
+        self,
+        template: Optional[str] = None,
+        sandbox_id: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        Initialize a PythonAppSandbox instance.
+
+        Args:
+            template: Docker image template. Defaults to PythonAppSandbox.DEFAULT_TEMPLATE if creating.
+            sandbox_id: ID of an existing sandbox to connect to.
+            **kwargs: Additional arguments for BaseSandbox.
+        """
+        if sandbox_id is None and template is None:
+            final_template = self.DEFAULT_TEMPLATE
+        else:
+            final_template = template
+        super().__init__(template=final_template, sandbox_id=sandbox_id, **kwargs)
+
+    # Add Python app specific methods here in the future if any
+
+
+class TypeScriptAppSandbox(BaseSandbox):
+    """A sandbox specialized for running TypeScript applications."""
+
+    DEFAULT_TEMPLATE = "k2-sandbox/typescript-app:latest"
+
+    def __init__(
+        self,
+        template: Optional[str] = None,
+        sandbox_id: Optional[str] = None,
+        **kwargs,
+    ):
+        """
+        Initialize a TypeScriptAppSandbox instance.
+
+        Args:
+            template: Docker image template. Defaults to TypeScriptAppSandbox.DEFAULT_TEMPLATE if creating.
+            sandbox_id: ID of an existing sandbox to connect to.
+            **kwargs: Additional arguments for BaseSandbox.
+        """
+        if sandbox_id is None and template is None:
+            final_template = self.DEFAULT_TEMPLATE
+        else:
+            final_template = template
+        super().__init__(template=final_template, sandbox_id=sandbox_id, **kwargs)
+
+    # Add TypeScript app specific methods here in the future if any
+
+
+Sandbox = BaseSandbox

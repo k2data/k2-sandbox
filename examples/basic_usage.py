@@ -24,7 +24,7 @@ def main():
     load_dotenv()  # Load environment variables from .env file
     start_time = time.time()
     print("Creating a new sandbox...")
-    with Sandbox(template="k2-sandbox/code-interpreter:latest") as sandbox:
+    with Sandbox.create_code_interpreter() as sandbox:
         creation_duration = time.time() - start_time
         print(f"Sandbox creation duration: {creation_duration:.2f} seconds")
 
