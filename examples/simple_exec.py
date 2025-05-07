@@ -22,7 +22,6 @@ def main():
         creation_duration = time.time() - start_time
         print(f"Sandbox creation duration: {creation_duration:.2f} seconds")
 
-        # 1. Execute simple Python code
         print("\n=== Running Python code ===")
         print(f"Sandbox ID: {sandbox.sandbox_id}")
 

@@ -22,7 +22,7 @@ def main():
         creation_duration = time.time() - start_time
         print(f"Sandbox creation duration: {creation_duration:.2f} seconds")
 
-        # 2. File operations
+        # 1. File operations
         print("\n=== File operations ===")
         # Write a file
         write_start_time = time.time()
@@ -47,7 +47,7 @@ def main():
             print(f"  - {file.name} {'(dir)' if file.is_dir else ''}")
         print(f"Directory listing duration: {list_duration:.2f} seconds")
 
-        # 3. Process execution
+        # 2. Process execution
         print("\n=== Process execution ===")
         # Run a command and capture output
         cmd_start_time = time.time()
