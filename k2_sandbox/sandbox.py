@@ -14,6 +14,7 @@ from k2_sandbox.models import (
     parse_output,
     OutputMessage,
     OutputHandler,
+    Logs,
     Result,
 )
 from k2_sandbox.exceptions import (
@@ -599,7 +600,6 @@ class CodeInterpreterSandbox(BaseSandbox):
         Returns:
             An Execution object populated with results from the stream.
         """
-        # from k2_sandbox.models import Execution, Logs, Result # Already imported at top-level
 
         service_url = (
             f"{self.api_base_url}/sandboxes/{self._sandbox_id}/services/49999/execute"
